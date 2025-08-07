@@ -34,35 +34,68 @@ import MetaCodable
 		/// - Parameter name: The name of the tool to call on the server.
 		case mcp(server: String, name: String? = nil)
 	}
-
-	/// Defines a function in your own code the model can choose to call.
-	/// - Learn more about [function calling](https://platform.openai.com/docs/guides/function-calling).
-	public struct Function: Equatable, Hashable, Codable, Sendable {
-		/// The name of the function to call.
-		public var name: String
-
-		/// A description of the function. Used by the model to determine whether or not to call the function.
-		public var description: String?
-
-		/// A JSON schema object describing the parameters of the function.
-		public var parameters: JSONSchema
-
-		/// Whether to enforce strict parameter validation.
-		public var strict: Bool
-
-		/// Create a new `Function` instance.
-		///
-		/// - Parameter name: The name of the function to call.
-		/// - Parameter description: A description of the function. Used by the model to determine whether or not to call the function.
-		/// - Parameter parameters: A JSON schema object describing the parameters of the function.
-		/// - Parameter strict: Whether to enforce strict parameter validation.
-		public init(name: String, description: String? = nil, parameters: JSONSchema, strict: Bool = true) {
-			self.name = name
-			self.strict = strict
-			self.parameters = parameters
-			self.description = description
-		}
-	}
+  
+  public struct Function: Equatable, Hashable, Codable, Sendable {
+    /// The name of the function to call.
+    public var name: String
+    
+    /// A description of the function. Used by the model to determine whether or not to call the function.
+    public var description: String?
+    
+    /// A JSON schema object describing the parameters of the function or a raw JSON string.
+    public var parameters: Parameters
+    
+    /// Whether to enforce strict parameter validation.
+    public var strict: Bool
+    
+    /// Defines the type of parameters accepted by the function.
+    public enum Parameters: Equatable, Hashable, Codable, Sendable {
+      case jsonSchema(JSONSchema)
+      case raw(String)
+      
+      public init(from decoder: Decoder) throws {
+        if let schema = try? JSONSchema(from: decoder) {
+          self = .jsonSchema(schema)
+          return
+        }
+        
+        let raw = try String(from: decoder)
+        self = .raw(raw)
+      }
+      
+      public func encode(to encoder: Encoder) throws {
+        switch self {
+        case let .jsonSchema(schema):
+          try schema.encode(to: encoder)
+        case let .raw(string):
+          try string.encode(to: encoder)
+        }
+      }
+    }
+    
+    /// Create a new `Function` instance.
+    ///
+    /// - Parameter name: The name of the function to call.
+    /// - Parameter description: A description of the function. Used by the model to determine whether or not to call the function.
+    /// - Parameter parameters: A JSON schema object describing the parameters of the function or a raw JSON string.
+    /// - Parameter strict: Whether to enforce strict parameter validation.
+    public init(name: String, description: String? = nil, parameters: Parameters, strict: Bool = true) {
+      self.name = name
+      self.strict = strict
+      self.parameters = parameters
+      self.description = description
+    }
+    
+    /// Create a new `Function` instance with a `JSONSchema` parameter definition.
+    public init(name: String, description: String? = nil, parameters: JSONSchema, strict: Bool = true) {
+      self.init(name: name, description: description, parameters: .jsonSchema(parameters), strict: strict)
+    }
+    
+    /// Create a new `Function` instance with a raw JSON string parameter definition.
+    public init(name: String, description: String? = nil, parameters: String, strict: Bool = true) {
+      self.init(name: name, description: description, parameters: .raw(parameters), strict: strict)
+    }
+  }
 
 	/// A tool that searches for relevant content from uploaded files.
 	///
@@ -503,15 +536,20 @@ import MetaCodable
 }
 
 public extension Tool {
-	/// Defines a function in your own code the model can choose to call.
-	/// - Learn more about [function calling](https://platform.openai.com/docs/guides/function-calling).
-	/// - Parameter name: The name of the function to call.
-	/// - Parameter description: A description of the function. Used by the model to determine whether or not to call the function.
-	/// - Parameter parameters: A JSON schema object describing the parameters of the function.
-	/// - Parameter strict: Whether to enforce strict parameter validation.
-	static func function(name: String, description: String? = nil, parameters: JSONSchema, strict: Bool = true) -> Self {
-		.function(Function(name: name, description: description, parameters: parameters, strict: strict))
-	}
+  /// - Parameter parameters: A JSON schema object describing the parameters of the function.
+  /// - Parameter strict: Whether to enforce strict parameter validation.
+  static func function(name: String, description: String? = nil, parameters: JSONSchema, strict: Bool = true) -> Self {
+    .function(Function(name: name, description: description, parameters: parameters, strict: strict))
+  }
+  
+  /// Defines a function in your own code the model can choose to call using a raw JSON string for parameters.
+  /// - Parameter name: The name of the function to call.
+  /// - Parameter description: A description of the function. Used by the model to determine whether or not to call the function.
+  /// - Parameter parameters: A raw JSON string describing the parameters of the function.
+  /// - Parameter strict: Whether to enforce strict parameter validation.
+  static func function(name: String, description: String? = nil, parameters: String, strict: Bool = true) -> Self {
+    .function(Function(name: name, description: description, parameters: parameters, strict: strict))
+  }
 
 //	static func function<T: Toolable>(_: T.Type) -> Self {
 //		let tool = T()
