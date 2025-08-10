@@ -182,6 +182,15 @@ public enum Item: Equatable, Hashable, Sendable {
 						return refusal
 				}
 			}
+      
+      public var asText: String? {
+        switch self {
+        case let .text(text, _, _):
+          return text
+        default:
+          return nil
+        }
+      }
 		}
 
 		/// An output message from the model.

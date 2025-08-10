@@ -64,7 +64,7 @@ public struct TextConfig: Equatable, Hashable, Codable, Sendable {
     @CodedAs("json_schema")
     case jsonSchema(
       schema: JSONSchema,
-      description: String,
+      description: String? = nil,
       name: String,
       strict: Bool?
     )
@@ -79,7 +79,7 @@ public struct TextConfig: Equatable, Hashable, Codable, Sendable {
     @CodedAs("json_schema")
     case generationSchema(
       schema: GenerationSchema,
-      description: String,
+      description: String? = nil,
       name: String,
       strict: Bool? // TODO: Document that here, only false works (GenerationSchema doesn't support strictness)
     )
